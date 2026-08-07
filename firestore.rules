@@ -9,18 +9,45 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Any signed-in user can read and manage the catalog — there is no
-    // separate admin role in this version of the app.
-    match /books/{bookId} {
-      allow read, write: if isSignedIn();
+    function isAdmin() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).exists &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // Members can create their own borrow records and read/update only
-    // their own. Reading someone else's records (e.g. for a "who has
-    // this book" view) would need a broader rule if you add that later.
+    match /users/{userId} {
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow read, update: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // A borrow/return only ever touches availableCopies, moving it by
+    // exactly 1 in either direction. Every other field must stay untouched.
+    function isAvailabilityStep() {
+      let before = resource.data;
+      let after = request.resource.data;
+      return after.diff(before).affectedKeys().hasOnly(['availableCopies']) &&
+        after.availableCopies is int &&
+        (after.availableCopies == before.availableCopies - 1 ||
+         after.availableCopies == before.availableCopies + 1) &&
+        after.availableCopies >= 0 &&
+        after.availableCopies <= before.totalCopies;
+    }
+
+    // The catalog is public to read. Signed-in users may add books.
+    // Any signed-in user may borrow/return, which steps availableCopies by
+    // 1. Every other update, and delete, is admin-only.
+    match /books/{bookId} {
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isAdmin() || (isSignedIn() && isAvailabilityStep());
+      allow delete: if isAdmin();
+    }
+
+    // Borrowing is available to any signed-in user; admins may also manage records.
     match /borrow_records/{recordId} {
-      allow read, update: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
     }
   }
 }

@@ -1,0 +1,13 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "borrow_records",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "borrowedAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

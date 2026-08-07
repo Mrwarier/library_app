@@ -20,6 +20,35 @@ class AuthGate extends StatelessWidget {
       );
     }
 
+    if (session.error != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Authentication error')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline, size: 64, color: Colors.redAccent),
+                const SizedBox(height: 16),
+                Text(
+                  session.error ?? 'Unknown auth error.',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                FilledButton(
+                  onPressed: () => Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  ),
+                  child: const Text('Retry sign in'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return session.isSignedIn ? const HomeScreen() : const LoginScreen();
   }
 }

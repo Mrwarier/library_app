@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../models/book.dart';
 import '../../services/book_service.dart';
+import '../../services/borrow_service.dart';
+import '../../services/session.dart';
 import '../../widgets/book_tile.dart';
 import 'add_edit_book_screen.dart';
 import 'book_detail_screen.dart';
@@ -14,8 +17,41 @@ class CatalogTab extends StatefulWidget {
 
 class _CatalogTabState extends State<CatalogTab> {
   final _bookService = BookService();
+  final _borrowService = BorrowService();
   final _searchController = TextEditingController();
   String _query = '';
+  String? _borrowingBookId;
+
+  Future<void> _borrowBook(Book book) async {
+    final user = context.read<Session>().user;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in to borrow books.')),
+      );
+      return;
+    }
+
+    setState(() => _borrowingBookId = book.id);
+    try {
+      await _borrowService.borrowBook(
+        bookId: book.id,
+        bookTitle: book.title,
+        userId: user.uid,
+        userName: context.read<Session>().displayName,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Borrowed "${book.title}".')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not borrow: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _borrowingBookId = null);
+    }
+  }
 
   @override
   void dispose() {
@@ -47,6 +83,69 @@ class _CatalogTabState extends State<CatalogTab> {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text('Deleted "${book.title}".')));
+  }
+
+  Widget _buildBooks(List<Book> books) {
+    if (books.isEmpty) {
+      return const Center(
+          child: Text('No books yet. Tap + to add one.'));
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.only(bottom: 80),
+      itemCount: books.length,
+      itemBuilder: (context, i) {
+        final book = books[i];
+        final isAdmin = context.watch<Session>().isAdmin;
+        return BookTile(
+          book: book,
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => BookDetailScreen(bookId: book.id),
+          )),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (book.isAvailable)
+                FilledButton.icon(
+                  icon: _borrowingBookId == book.id
+                      ? const SizedBox(
+                          height: 16,
+                          width: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.shopping_cart_checkout),
+                  label: const Text('Borrow'),
+                  onPressed: _borrowingBookId == book.id
+                      ? null
+                      : () => _borrowBook(book),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(0, 36),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                  ),
+                ),
+              if (isAdmin)
+                PopupMenuButton<String>(
+                  onSelected: (value) {
+                    if (value == 'edit') {
+                      Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => AddEditBookScreen(book: book),
+                      ));
+                    } else if (value == 'delete') {
+                      _confirmDelete(book);
+                    }
+                  },
+                  itemBuilder: (context) => const [
+                    PopupMenuItem(value: 'edit', child: Text('Edit')),
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Text('Delete', style: TextStyle(color: Colors.red)),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -84,48 +183,22 @@ class _CatalogTabState extends State<CatalogTab> {
             stream: stream,
             builder: (context, snapshot) {
               if (snapshot.hasError) {
-                return Center(child: Text('Error: ${snapshot.error}'));
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      'Could not load books from Firestore: ${snapshot.error}',
+                      style: TextStyle(color: Colors.red.shade700),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                );
               }
               if (!snapshot.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
               final books = snapshot.data!;
-              if (books.isEmpty) {
-                return const Center(
-                    child: Text('No books yet. Tap + to add one.'));
-              }
-              return ListView.builder(
-                padding: const EdgeInsets.only(bottom: 80),
-                itemCount: books.length,
-                itemBuilder: (context, i) {
-                  final book = books[i];
-                  return BookTile(
-                    book: book,
-                    onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => BookDetailScreen(bookId: book.id),
-                    )),
-                    trailing: PopupMenuButton<String>(
-                      onSelected: (value) {
-                        if (value == 'edit') {
-                          Navigator.of(context).push(MaterialPageRoute(
-                            builder: (_) => AddEditBookScreen(book: book),
-                          ));
-                        } else if (value == 'delete') {
-                          _confirmDelete(book);
-                        }
-                      },
-                      itemBuilder: (context) => const [
-                        PopupMenuItem(value: 'edit', child: Text('Edit')),
-                        PopupMenuItem(
-                          value: 'delete',
-                          child:
-                              Text('Delete', style: TextStyle(color: Colors.red)),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              );
+              return _buildBooks(books);
             },
           ),
         ),

@@ -39,9 +39,11 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _passwordController.text,
       );
       if (!mounted) return;
-      context.read<Session>().setUser(user);
+      await context.read<Session>().setUser(user);
     } catch (e) {
-      setState(() => _error = e.toString());
+      if (mounted) {
+        setState(() => _error = e.toString());
+      }
     } finally {
       if (mounted) setState(() => _submitting = false);
     }

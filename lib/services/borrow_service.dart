@@ -30,6 +30,7 @@ class BorrowService {
     );
     await _records.add(record.toMap());
   }
+  
 
   Future<void> returnBook(BorrowRecord record) async {
     await _bookService.incrementAvailability(record.bookId);

@@ -94,6 +94,9 @@ class _AddEditBookScreenState extends State<AddEditBookScreen> {
       }
 
       if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Book saved successfully.')),
+      );
       Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;

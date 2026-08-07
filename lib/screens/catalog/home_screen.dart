@@ -5,9 +5,9 @@ import 'add_edit_book_screen.dart';
 import 'catalog_tab.dart';
 import 'my_loans_tab.dart';
 
-/// Single home screen for every signed-in user — there is no separate
-/// admin view. Anyone can browse the catalog, add/edit/delete books, and
-/// track their own loans.
+/// Home screen for every signed-in user.
+/// The UI shows the current user profile and role, and admin users get
+/// elevated management controls where applicable.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -34,8 +34,55 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: pages[_index],
-      floatingActionButton: _index == 0
+      body: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            color: Colors.indigo.shade50,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                const Icon(Icons.person, color: Colors.indigo),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        session.displayName,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(session.user?.email ?? '',
+                          style: const TextStyle(fontSize: 14)),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Chip(
+                            label: Text(session.role.toUpperCase()),
+                            backgroundColor: session.isAdmin
+                                ? Colors.indigo.shade100
+                                : Colors.grey.shade200,
+                          ),
+                          if (session.isAdmin) ...[
+                            const SizedBox(width: 8),
+                            const Icon(Icons.star, size: 16, color: Colors.amber),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(child: pages[_index]),
+        ],
+      ),
+      floatingActionButton: _index == 0 && session.isSignedIn
           ? FloatingActionButton.extended(
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(
                 builder: (_) => const AddEditBookScreen(),

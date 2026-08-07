@@ -29,7 +29,8 @@ class BookService {
   }
 
   Future<String> addBook(Book book) async {
-    final doc = await _books.add(book.toMap());
+    final doc = _books.doc();
+    await doc.set(book.toMap());
     return doc.id;
   }
 
