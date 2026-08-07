@@ -1,0 +1,30 @@
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+*.iml
+*.class
+*.log
+
+# Android
+android/local.properties
+android/.gradle
+android/app/debug
+android/app/profile
+android/app/release
+android/**/GeneratedPluginRegistrant.java
+
+# iOS
+ios/Flutter/Generated.xcconfig
+ios/Flutter/App.framework
+ios/Flutter/Flutter.framework
+ios/Pods/
+ios/.symlinks/
+
+# IDE
+.vscode/
+.idea/
+*.swp

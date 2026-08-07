@@ -1,0 +1,26 @@
+rules_version = '2';
+
+// Deploy with: firebase deploy --only firestore:rules
+// (requires the Firebase CLI and `firebase init` run once against this project)
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Any signed-in user can read and manage the catalog — there is no
+    // separate admin role in this version of the app.
+    match /books/{bookId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Members can create their own borrow records and read/update only
+    // their own. Reading someone else's records (e.g. for a "who has
+    // this book" view) would need a broader rule if you add that later.
+    match /borrow_records/{recordId} {
+      allow read, update: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+    }
+  }
+}
