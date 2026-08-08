@@ -104,7 +104,7 @@ class _CatalogTabState extends State<CatalogTab> {
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (book.isAvailable)
+              if (book.isAvailable && !isAdmin)
                 FilledButton.icon(
                   icon: _borrowingBookId == book.id
                       ? const SizedBox(

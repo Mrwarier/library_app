@@ -47,6 +47,8 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final session = context.watch<Session>();
+    final isAdmin = session.isAdmin;
     return Scaffold(
       appBar: AppBar(title: const Text('Book Details')),
       body: FutureBuilder<Book?>(
@@ -105,7 +107,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
-                    onPressed: (!book.isAvailable || _borrowing)
+                    onPressed: (!book.isAvailable || _borrowing || isAdmin)
                         ? null
                         : () => _borrow(book),
                     child: _borrowing
@@ -113,7 +115,9 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(strokeWidth: 2))
-                        : Text(book.isAvailable ? 'Borrow this book' : 'Unavailable'),
+                        : Text(isAdmin
+                            ? 'Admin cannot borrow'
+                            : (book.isAvailable ? 'Borrow this book' : 'Unavailable')),
                   ),
                 ),
               ],

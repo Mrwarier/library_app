@@ -48,4 +48,12 @@ class BorrowService {
         .map((snap) =>
             snap.docs.map((d) => BorrowRecord.fromFirestore(d)).toList());
   }
+
+  Stream<List<BorrowRecord>> streamAllBorrows() {
+    return _records
+        .orderBy('borrowedAt', descending: true)
+        .snapshots()
+        .map((snap) =>
+            snap.docs.map((d) => BorrowRecord.fromFirestore(d)).toList());
+  }
 }

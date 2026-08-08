@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/session.dart';
+import '../auth/login_screen.dart';
 import 'add_edit_book_screen.dart';
 import 'catalog_tab.dart';
 import 'my_loans_tab.dart';
@@ -23,14 +24,22 @@ class _HomeScreenState extends State<HomeScreen> {
     final session = context.watch<Session>();
     final pages = [const CatalogTab(), const MyLoansTab()];
 
+    final loansLabel = session.isAdmin ? 'All Loans' : 'My Loans';
     return Scaffold(
       appBar: AppBar(
-        title: Text(_index == 0 ? 'Catalog' : 'My Loans'),
+        title: Text(_index == 0 ? 'Catalog' : loansLabel),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Sign out',
-            onPressed: () => session.signOut(),
+            onPressed: () async {
+              await session.signOut();
+              if (!context.mounted) return;
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                (route) => false,
+              );
+            },
           ),
         ],
       ),
@@ -94,9 +103,11 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.book_outlined), label: 'Catalog'),
-          NavigationDestination(icon: Icon(Icons.history), label: 'My Loans'),
+        destinations: [
+          const NavigationDestination(
+              icon: Icon(Icons.book_outlined), label: 'Catalog'),
+          NavigationDestination(
+              icon: const Icon(Icons.history), label: loansLabel),
         ],
       ),
     );

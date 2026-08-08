@@ -10,9 +10,11 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).exists &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      // A single get() reused via a let binding, instead of two separate
+      // get() calls, to avoid double-counting against Firestore's
+      // 10-get-per-evaluation budget every time isAdmin() is invoked.
+      let profile = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return isSignedIn() && profile.data.get('role', '') == 'admin';
     }
 
     match /users/{userId} {
@@ -45,7 +47,13 @@ service cloud.firestore {
 
     // Borrowing is available to any signed-in user; admins may also manage records.
     match /borrow_records/{recordId} {
-      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      // Both get and list are evaluated per-document against resource.data —
+      // there is no rules-language way to assert a query's where-clause
+      // shape (request.query.where(...) is not a real expression), so a
+      // non-admin's list must be constrained the same way a get is: every
+      // document returned has to belong to the requester.
+      allow get, list: if isSignedIn() &&
+        (resource.data.userId == request.auth.uid || isAdmin());
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow update, delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
     }

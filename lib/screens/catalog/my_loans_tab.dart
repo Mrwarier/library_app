@@ -36,11 +36,15 @@ class _MyLoansTabState extends State<MyLoansTab> {
 
   @override
   Widget build(BuildContext context) {
-    final uid = context.watch<Session>().user?.uid;
+    final session = context.watch<Session>();
+    final uid = session.user?.uid;
     if (uid == null) return const SizedBox.shrink();
+    final stream = session.isAdmin
+        ? _borrowService.streamAllBorrows()
+        : _borrowService.streamMyBorrows(uid);
 
     return StreamBuilder<List<BorrowRecord>>(
-      stream: _borrowService.streamMyBorrows(uid),
+      stream: stream,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return Center(child: Text('Error: ${snapshot.error}'));
@@ -50,7 +54,11 @@ class _MyLoansTabState extends State<MyLoansTab> {
         }
         final records = snapshot.data!;
         if (records.isEmpty) {
-          return const Center(child: Text("You haven't borrowed any books yet."));
+          return Center(
+            child: Text(session.isAdmin
+                ? 'No books have been borrowed yet.'
+                : "You haven't borrowed any books yet."),
+          );
         }
         return ListView.builder(
           itemCount: records.length,
@@ -58,6 +66,14 @@ class _MyLoansTabState extends State<MyLoansTab> {
             final r = records[i];
             final isActive = r.status == BorrowStatus.borrowed;
             final overdue = r.isOverdue;
+            final isAdmin = session.isAdmin;
+            // Admins manage every member's loans, including returning books
+            // on a borrower's behalf, so the action stays available for them
+            // too rather than being borrower-only.
+            final showReturnAction = isActive;
+            final dueLine = isActive
+                ? '${overdue ? "Overdue since" : "Due"} ${_dateFormat.format(r.dueAt)}'
+                : 'Returned ${_dateFormat.format(r.returnedAt ?? r.dueAt)}';
             return ListTile(
               leading: Icon(
                 isActive
@@ -68,10 +84,11 @@ class _MyLoansTabState extends State<MyLoansTab> {
                     : (isActive ? Colors.indigo : Colors.green),
               ),
               title: Text(r.bookTitle),
-              subtitle: Text(isActive
-                  ? '${overdue ? "Overdue since" : "Due"} ${_dateFormat.format(r.dueAt)}'
-                  : 'Returned ${_dateFormat.format(r.returnedAt ?? r.dueAt)}'),
-              trailing: isActive
+              // Admins see every loan mixed together, so show who has each
+              // book; borrowers only ever see their own, so that line would
+              // just repeat their own name back at them.
+              subtitle: Text(isAdmin ? '${r.userName} — $dueLine' : dueLine),
+              trailing: showReturnAction
                   ? (_returningId == r.id
                       ? const SizedBox(
                           height: 20,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/session.dart';
+import '../catalog/home_screen.dart';
 import 'signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -40,6 +41,11 @@ class _LoginScreenState extends State<LoginScreen> {
       );
       if (!mounted) return;
       await context.read<Session>().setUser(user);
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        (route) => false,
+      );
     } catch (e) {
       if (mounted) {
         setState(() => _error = e.toString());
